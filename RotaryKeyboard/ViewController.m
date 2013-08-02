@@ -33,17 +33,22 @@
 - (IBAction)segButtonPushed:(id)sender{
     UISegmentedControl *segControl = sender;
     switch (segControl.selectedSegmentIndex){
-        case 0: //Space
+        case 0: //Caps
+            [self.rotaryPicker toggleCaps];
+            break;
+        case 1: //123
+            [self.rotaryPicker toggleSym];
+            break;
+        case 2: //Space
             [label setText:[NSString stringWithFormat:@"%@%c",label.text, ' ']];
             [wordBuffer setString:@""];
             break;
-        case 1: //Caps
-            [self.rotaryPicker toggleCaps];
+        case 3: //DEL
+            self.wordBuffer = [NSMutableString stringWithString:[self.wordBuffer substringToIndex:wordBuffer.length-2]];
+            [label setText: [label.text substringToIndex:label.text.length-2] ];
+            //TODO Look backward, load into wordBuffer what exists before encountering space delimiter
             break;
-        case 2: //Symbol
-            [self.rotaryPicker toggleSym];
-            break;
-        case 3: //Enter
+        case 4: //Enter
             [label setText:[NSString stringWithFormat:@"%@%@",label.text, @"\n"]];
             [wordBuffer setString:@""];
             break;
@@ -69,7 +74,7 @@
         temp = [temp substringWithRange:strRange];
         
         [label setText:[NSString stringWithFormat:@"%@%@ ",label.text, temp]];
-        [wordBuffer setString:@""];
+        
         [self.rotaryPicker selectRow:0 inComponent:0 animated:YES];
     }
 }
