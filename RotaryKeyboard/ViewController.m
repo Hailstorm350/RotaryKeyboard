@@ -43,12 +43,13 @@ NSString *contents;
         case 2: //Space
             [textField setText:[NSString stringWithFormat:@"%@%c",textField.text, ' ']];
             [wordBuffer setString:@""];
+            [self.rotaryPicker reloadAllComponents];
             break;
         case 3: //DEL
             contents = textField.text;
             if (contents.length == 0)
                 break;
-            if ([self.wordBuffer length] == 0 && [contents characterAtIndex:contents.length-1] == ' '){
+            if ([self.wordBuffer length] == 0 && ([contents characterAtIndex:contents.length-1] == ' ' || [contents characterAtIndex:contents.length-1] == '\n')){
                 //Space at end of text during delete, look behind until space encountered, fill wordBuffer, delete space.
                 contents = [NSMutableString stringWithString:[contents substringToIndex:contents.length-1]];
                 [textField setText: contents];
@@ -91,7 +92,7 @@ NSString *contents;
         temp = [temp substringWithRange:strRange];
         
         [textField setText:[NSString stringWithFormat:@"%@%@",textField.text, temp]];
-        [wordBuffer setString:temp];
+        [wordBuffer appendString:temp];
         [self.rotaryPicker selectRow:0 inComponent:0 animated:YES];
     }
 }
@@ -149,7 +150,7 @@ NSString *contents;
     [self.rotaryPicker selectRow:0 inComponent:1 animated:YES];
 }
 
-- (NSString *) pickerView:(UIPickerView *)pickerView titleForRow:(NSInteger)row forComponent:(NSInteger)component{
+- (NSString *)pickerView:(UIPickerView *)pickerView titleForRow:(NSInteger)row forComponent:(NSInteger)component{
     return [rotaryPicker pickerView:pickerView titleForRow:row forComponent:component];
 }
 
@@ -176,8 +177,43 @@ NSString *contents;
 {
     [super viewDidLoad];
     [self createPicker];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(keyboardDidShow:) name:UIKeyboardDidShowNotification object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(keyboardWillHide:) name:UIKeyboardWillHideNotification object:nil];
 }
 
+- (void)keyboardDidShow: (NSNotification *) notification {
+    if (keyboardShown) return;
+//    NSDictionary *info = [notification userInfo];
+//    NSValue *value = [info objectForKey:UIKeyboardFrameBeginUserInfoKey];
+//    CGSize keyboardSize = [value CGRectValue].size;
+    NSTimeInterval animationDuration = .25;
+    CGRect frame = self.rotaryPicker.frame;
+    frame.origin.y -= 28;
+    [UIView beginAnimations:@"ResizeForKeyboard" context:nil];
+    [UIView setAnimationDuration:animationDuration];
+    self.rotaryPicker.frame = frame;
+    [UIView commitAnimations];
+    viewMoved = YES;
+    keyboardShown = YES;
+    self.segControl.hidden = NO;
+}
+
+- (void)keyboardWillHide: (NSNotification *) notification {
+    if (!keyboardShown) return;
+    NSDictionary *info = [notification userInfo];
+    NSValue *value = [info objectForKey:UIKeyboardFrameBeginUserInfoKey];
+    CGSize keyboardSize = [value CGRectValue].size;
+    NSTimeInterval animationDuration = .25;
+    CGRect frame =  self.segControl.frame;
+    frame.origin.y += keyboardSize.height;
+    frame.size.height -= keyboardSize.height;
+    [UIView beginAnimations:@"ResizeForKeyboard" context:nil];
+    [UIView setAnimationDuration:animationDuration];
+    _segControl.frame = frame;
+    [UIView commitAnimations];
+    viewMoved = NO;
+    keyboardShown = NO;
+}
 
 - (void)viewWillAppear:(BOOL)animated
 {	
@@ -186,6 +222,8 @@ NSString *contents;
 	
 	// match the status bar with the nav bar
 	[UIApplication sharedApplication].statusBarStyle = UIStatusBarStyleBlackOpaque;
+    
+    self.segControl.hidden = YES;
 }
 
 

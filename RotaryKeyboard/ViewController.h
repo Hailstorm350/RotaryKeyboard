@@ -18,3 +18,5 @@
 -(IBAction) segButtonPushed:(id)sender;
 
 @end
+bool keyboardShown;
+bool viewMoved;
