@@ -14,7 +14,9 @@
 
 @implementation ViewController
 
-@synthesize rotaryPicker, label, wordBuffer;
+@synthesize rotaryPicker, textField, wordBuffer;
+
+NSString *contents;
 
 /* LOGIC */
 
@@ -22,8 +24,7 @@
       inComponent:(NSInteger)component
 {
     if(component == 1){
-        NSString * sel = [rotaryPicker.charViewArray objectAtIndex:row] ; //TODO use cache of recently typed letters
-                                                                        // Before Space
+        NSString * sel = [rotaryPicker.charViewArray objectAtIndex:row];
         if([wordBuffer length] <= 0)
             [self.rotaryPicker fetchWords:sel];
         [self.rotaryPicker reloadAllComponents];
@@ -40,16 +41,31 @@
             [self.rotaryPicker toggleSym];
             break;
         case 2: //Space
-            [label setText:[NSString stringWithFormat:@"%@%c",label.text, ' ']];
+            [textField setText:[NSString stringWithFormat:@"%@%c",textField.text, ' ']];
             [wordBuffer setString:@""];
+            [self.rotaryPicker reloadAllComponents];
             break;
         case 3: //DEL
-            self.wordBuffer = [NSMutableString stringWithString:[self.wordBuffer substringToIndex:wordBuffer.length-2]];
-            [label setText: [label.text substringToIndex:label.text.length-2] ];
-            //TODO Look backward, load into wordBuffer what exists before encountering space delimiter
+            contents = textField.text;
+            if (contents.length == 0)
+                break;
+            if ([self.wordBuffer length] == 0 && ([contents characterAtIndex:contents.length-1] == ' ' || [contents characterAtIndex:contents.length-1] == '\n')){
+                //Space at end of text during delete, look behind until space encountered, fill wordBuffer, delete space.
+                contents = [NSMutableString stringWithString:[contents substringToIndex:contents.length-1]];
+                [textField setText: contents];
+                for (int i = contents.length-1; i >= 0 && [contents characterAtIndex:i] != ' '; i--){
+                    [wordBuffer setString:[NSString stringWithFormat:@"%c%@", [contents characterAtIndex:i], wordBuffer]];
+                }
+            }
+            else{
+                self.wordBuffer = [NSMutableString stringWithString:[self.wordBuffer substringToIndex:wordBuffer.length-1]];
+                [textField setText: [contents substringToIndex:contents.length-1]];
+            }
+            if (wordBuffer.length > 0)
+                [self.rotaryPicker fetchWords:wordBuffer];
             break;
         case 4: //Enter
-            [label setText:[NSString stringWithFormat:@"%@%@",label.text, @"\n"]];
+            [textField setText:[NSString stringWithFormat:@"%@%@",textField.text, @"\n"]];
             [wordBuffer setString:@""];
             break;
     }
@@ -58,7 +74,7 @@
 - (void) selectChar:(id)sender{
     NSString *temp = [rotaryPicker.charViewArray objectAtIndex:[rotaryPicker selectedRowInComponent:1]];
     
-    [label setText:[NSString stringWithFormat:@"%@%@",label.text, temp]];
+    [textField setText:[NSString stringWithFormat:@"%@%@",textField.text, temp]];
     [wordBuffer appendString:temp];
     
     if ([wordBuffer length] > 0)
@@ -67,14 +83,16 @@
 
 - (void) selectWord:(id)sender{
     if([rotaryPicker.wordViewArray count] > 0 ){
+        //temp <- selected word
         NSString *temp = [[rotaryPicker.wordViewArray objectAtIndex:[rotaryPicker selectedRowInComponent:0]] text];
         
+        //Specify a string range that adds only the remainder of the word.
         NSRange strRange = {[wordBuffer length], [temp length]-[wordBuffer length]};
         strRange = [temp rangeOfComposedCharacterSequencesForRange:strRange];
         temp = [temp substringWithRange:strRange];
         
-        [label setText:[NSString stringWithFormat:@"%@%@ ",label.text, temp]];
-        
+        [textField setText:[NSString stringWithFormat:@"%@%@",textField.text, temp]];
+        [wordBuffer appendString:temp];
         [self.rotaryPicker selectRow:0 inComponent:0 animated:YES];
     }
 }
@@ -124,13 +142,15 @@
     // Init the wordBuffer
     wordBuffer = [[NSMutableString alloc] init];
     
+    //Set up the wheels as first responder for the text view
+    [textField setInputView:rotaryPicker];
+    
 	// add this picker to our view controller, initially hidden
 	rotaryPicker.hidden = NO;
-	[self.view addSubview:rotaryPicker];
     [self.rotaryPicker selectRow:0 inComponent:1 animated:YES];
 }
 
-- (NSString *) pickerView:(UIPickerView *)pickerView titleForRow:(NSInteger)row forComponent:(NSInteger)component{
+- (NSString *)pickerView:(UIPickerView *)pickerView titleForRow:(NSInteger)row forComponent:(NSInteger)component{
     return [rotaryPicker pickerView:pickerView titleForRow:row forComponent:component];
 }
 
@@ -157,8 +177,43 @@
 {
     [super viewDidLoad];
     [self createPicker];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(keyboardDidShow:) name:UIKeyboardDidShowNotification object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(keyboardWillHide:) name:UIKeyboardWillHideNotification object:nil];
 }
 
+- (void)keyboardDidShow: (NSNotification *) notification {
+    if (keyboardShown) return;
+//    NSDictionary *info = [notification userInfo];
+//    NSValue *value = [info objectForKey:UIKeyboardFrameBeginUserInfoKey];
+//    CGSize keyboardSize = [value CGRectValue].size;
+    NSTimeInterval animationDuration = .25;
+    CGRect frame = self.rotaryPicker.frame;
+    frame.origin.y -= 28;
+    [UIView beginAnimations:@"ResizeForKeyboard" context:nil];
+    [UIView setAnimationDuration:animationDuration];
+    self.rotaryPicker.frame = frame;
+    [UIView commitAnimations];
+    viewMoved = YES;
+    keyboardShown = YES;
+    self.segControl.hidden = NO;
+}
+
+- (void)keyboardWillHide: (NSNotification *) notification {
+    if (!keyboardShown) return;
+    NSDictionary *info = [notification userInfo];
+    NSValue *value = [info objectForKey:UIKeyboardFrameBeginUserInfoKey];
+    CGSize keyboardSize = [value CGRectValue].size;
+    NSTimeInterval animationDuration = .25;
+    CGRect frame =  self.segControl.frame;
+    frame.origin.y += keyboardSize.height;
+    frame.size.height -= keyboardSize.height;
+    [UIView beginAnimations:@"ResizeForKeyboard" context:nil];
+    [UIView setAnimationDuration:animationDuration];
+    _segControl.frame = frame;
+    [UIView commitAnimations];
+    viewMoved = NO;
+    keyboardShown = NO;
+}
 
 - (void)viewWillAppear:(BOOL)animated
 {	
@@ -167,6 +222,8 @@
 	
 	// match the status bar with the nav bar
 	[UIApplication sharedApplication].statusBarStyle = UIStatusBarStyleBlackOpaque;
+    
+    self.segControl.hidden = YES;
 }
 
 
