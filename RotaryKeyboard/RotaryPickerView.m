@@ -27,22 +27,6 @@ bool isCaps, isSym;
 
 #pragma mark UIPickerView
 
-//- (void)fetchWords{
-//    NSFetchRequest *fetch=[[NSFetchRequest alloc] init];
-//    NSEntityDescription *testEntity=[NSEntityDescription entityForName:@"Word" inManagedObjectContext:self.moc];
-//    [fetch setEntity:testEntity];
-////    NSPredicate *pred=[NSPredicate predicateWithFormat:@"dateSaved==%@", targetDate];
-////    [fetch setPredicate:[NSArray arrayWithObject:pred]];
-//    
-//    NSError *fetchError=nil;
-//    self.wordViewArray=[NSMutableArray arrayWithArray:[self.moc executeFetchRequest:fetch error:&fetchError]];
-//    
-//    if (fetchError!=nil) {
-//        NSLog(@" fetchError=%@,details=%@",fetchError,fetchError.userInfo);
-//        self.wordViewArray = [NSMutableArray arrayWithObject:@"nil"];
-//    }
-//}
-
 //Refill the word array based on new selection or prefix parameter, Currently only does beginning letter
 - (void) fetchWords:(NSString *) prefix{
 //    char selChar = [prefix characterAtIndex:0];
@@ -51,13 +35,10 @@ bool isCaps, isSym;
     NSEntityDescription *testEntity=[NSEntityDescription entityForName:@"Word" inManagedObjectContext:self.moc];
     [fetch setEntity:testEntity];
     NSPredicate *predicate = [NSPredicate predicateWithFormat: @"text BEGINSWITH[c] %@", prefix];
-//    NSLog(@"predicate:%@\nselChar:%@",predicate, prefix);
     [fetch setPredicate:predicate];
     
     NSError *fetchError=nil;
     self.wordViewArray = [NSMutableArray arrayWithArray:[self.moc executeFetchRequest:fetch error:&fetchError]];
-//    if([self.wordViewArray count] <= 0)
-//       [self.wordViewArray insertObject:@"" atIndex:0];
     
     if (fetchError!=nil) {
         NSLog(@" fetchError=%@,details=%@",fetchError,fetchError.userInfo);
@@ -96,7 +77,7 @@ bool isCaps, isSym;
     }
     self.charViewArray = toFill;
     
-    [self reloadAllComponents];
+    [self reloadComponent: 1];
 }
 
 - (void) toggleSym{
@@ -122,7 +103,7 @@ bool isCaps, isSym;
     }
     self.charViewArray = toFill;
     
-    [self reloadAllComponents];
+    [self reloadComponent: 1];
     [self selectRow:0 inComponent:1 animated:YES];
 }
 #pragma mark -

@@ -12,9 +12,11 @@
 @interface ViewController : UIViewController <UIPickerViewDelegate, UIPickerViewDataSource>
 
 @property (nonatomic, retain) IBOutlet RotaryPickerView *rotaryPicker;
-@property (nonatomic, retain) IBOutlet UILabel *label;
+@property (nonatomic, retain) IBOutlet UITextView *textField;
 @property (nonatomic, retain) IBOutlet UISegmentedControl *segControl;
 @property (nonatomic, retain) NSMutableString *wordBuffer;
 -(IBAction) segButtonPushed:(id)sender;
 
 @end
+bool keyboardShown;
+bool viewMoved;
